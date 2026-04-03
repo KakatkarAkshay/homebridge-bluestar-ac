@@ -1,0 +1,61 @@
+{
+  "name": "homebridge-bluestar-ac",
+  "displayName": "Blue Star AC",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Homebridge dynamic platform plugin for Blue Star AC local UDP control",
+  "author": "Akshay Kakatkar",
+  "homepage": "https://github.com/KakatkarAkshay/homebridge-bluestar-ac#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KakatkarAkshay/homebridge-bluestar-ac.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KakatkarAkshay/homebridge-bluestar-ac/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "homebridge-ui",
+    "config.schema.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rimraf ./dist && tsc",
+    "check": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "prepack": "npm run lint && npm run build",
+    "prepublishOnly": "npm run lint && npm run build"
+  },
+  "keywords": [
+    "homebridge-plugin",
+    "homebridge",
+    "bluestar",
+    "air-conditioner",
+    "udp",
+    "local"
+  ],
+  "engines": {
+    "node": "^20.18.0 || ^22.10.0 || ^24.0.0",
+    "homebridge": "^1.8.0 || ^2.0.0-beta.0"
+  },
+  "peerDependencies": {
+    "homebridge": "^1.8.0 || ^2.0.0-beta.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^24.10.1",
+    "eslint": "^9.39.1",
+    "homebridge": "^2.0.0-beta.55",
+    "rimraf": "^6.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4"
+  },
+  "dependencies": {
+    "@homebridge/plugin-ui-utils": "^2.2.3"
+  },
+  "license": "MIT"
+}
