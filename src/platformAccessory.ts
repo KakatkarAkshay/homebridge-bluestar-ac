@@ -294,7 +294,7 @@ export class BlueStarAcPlatformAccessory implements UdpAccessoryBinding {
   }
 
   private async setActive(value: CharacteristicValue): Promise<void> {
-    this.sendDesiredState({ pow: value === this.hapCharacteristic.Active.ACTIVE ? 1 : 0 });
+    await this.sendDesiredState({ pow: value === this.hapCharacteristic.Active.ACTIVE ? 1 : 0 });
   }
 
   private async setTargetState(value: CharacteristicValue): Promise<void> {
@@ -305,30 +305,30 @@ export class BlueStarAcPlatformAccessory implements UdpAccessoryBinding {
       mode = MODE_AUTO;
     }
 
-    this.sendDesiredState(buildModePayload(mode, this.state));
+    await this.sendDesiredState(buildModePayload(mode, this.state));
   }
 
   private async setCoolingThresholdTemperature(value: CharacteristicValue): Promise<void> {
-    this.sendDesiredState({
+    await this.sendDesiredState({
       stemp: toDeviceTemperatureString(Number(value), this.getCurrentTemperatureUnit()),
       pow: 1,
     });
   }
 
   private async setHeatingThresholdTemperature(value: CharacteristicValue): Promise<void> {
-    this.sendDesiredState({
+    await this.sendDesiredState({
       stemp: toDeviceTemperatureString(Number(value), this.getCurrentTemperatureUnit()),
       pow: 1,
     });
   }
 
   private async setHeaterCoolerRotationSpeed(value: CharacteristicValue): Promise<void> {
-    this.sendDesiredState({ fspd: rotationToFanSpeed(Number(value)), pow: 1 });
+    await this.sendDesiredState({ fspd: rotationToFanSpeed(Number(value)), pow: 1 });
   }
 
   private async setHeaterCoolerSwingMode(value: CharacteristicValue): Promise<void> {
     const enabled = value === this.hapCharacteristic.SwingMode.SWING_ENABLED;
-    this.sendDesiredState({
+    await this.sendDesiredState({
       hswing: enabled ? SWING_ON_VALUE : SWING_OFF_VALUE,
       vswing: enabled ? SWING_ON_VALUE : SWING_OFF_VALUE,
       pow: 1,
@@ -336,6 +336,6 @@ export class BlueStarAcPlatformAccessory implements UdpAccessoryBinding {
   }
 
   private async setTemperatureDisplayUnits(value: CharacteristicValue): Promise<void> {
-    this.sendDesiredState({ displayunit: parseIntSafe(value, 0) });
+    await this.sendDesiredState({ displayunit: parseIntSafe(value, 0) });
   }
 }
