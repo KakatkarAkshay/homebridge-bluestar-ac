@@ -23,6 +23,8 @@ export interface DeviceState {
   df_clean: number;
   lastSeenAt: number;
   source: string;
+  mqttConnected?: boolean;
+  lastPresenceAt?: number;
   [key: string]: unknown;
 }
 
@@ -63,6 +65,14 @@ export interface CloudThing {
     [key: string]: unknown;
   };
   [key: string]: unknown;
+}
+
+export interface BrokerInfo {
+  endpoint: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  sessionToken?: string;
+  region: string;
 }
 
 export interface UdpAccessoryBinding {

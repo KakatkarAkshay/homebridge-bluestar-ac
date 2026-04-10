@@ -80,6 +80,7 @@ export class BlueStarAcPlatformAccessory implements UdpAccessoryBinding {
 
     this.accessory.context.device = device;
     this.configureAccessory();
+    this.platform.registerDeviceBinding(this);
     this.platform.registry.register(this);
   }
 
@@ -102,18 +103,59 @@ export class BlueStarAcPlatformAccessory implements UdpAccessoryBinding {
     this.log.info(`${this.device.name}: learned device IP from ${source}: ${ipAddress}`);
   }
 
+  private getIncomingStateTimestamp(packet: Record<string, unknown>): number {
+    return parseIntSafe(packet.ts, 0);
+  }
+
+  private shouldApplyIncomingState(packet: Record<string, unknown>): boolean {
+    const incomingTimestamp = this.getIncomingStateTimestamp(packet);
+    const currentTimestamp = parseIntSafe(this.state.ts, 0);
+    return incomingTimestamp === 0 || incomingTimestamp >= currentTimestamp;
+  }
+
   handleLocalState(packet: Record<string, unknown>, sourceIp?: string): void {
     if (!this.device.ip && sourceIp) {
       this.learnIpAddress(sourceIp, "UDP broadcast");
+    }
+
+    if (!this.shouldApplyIncomingState(packet)) {
+      return;
     }
 
     this.state = {
       ...this.state,
       ...packet,
       lastSeenAt: Date.now(),
-      source: sourceIp ?? this.state.source,
+      source: sourceIp ? `udp:${sourceIp}` : this.state.source,
     };
     this.updateCharacteristics();
+  }
+
+  handleMqttState(packet: Record<string, unknown>): void {
+    if (!this.shouldApplyIncomingState(packet)) {
+      return;
+    }
+
+    const packetSource = typeof packet.src === "string" && packet.src
+      ? `mqtt:${packet.src}`
+      : "mqtt";
+    this.state = {
+      ...this.state,
+      ...packet,
+      lastSeenAt: Date.now(),
+      source: packetSource,
+    };
+    this.updateCharacteristics();
+  }
+
+  handlePresenceChange(isOnline: boolean, timestamp: number): void {
+    this.state = {
+      ...this.state,
+      mqttConnected: isOnline,
+      lastPresenceAt: timestamp,
+      conn_ts: timestamp,
+      connected: isOnline,
+    };
   }
 
   private configureAccessory(): void {

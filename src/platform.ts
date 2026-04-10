@@ -16,32 +16,46 @@ import {
   getAuthType,
   mergeCloudThingWithOverride,
   normalizeOptionalString,
+  parseBrokerInfo,
   requestJson,
 } from "./bluestar.js";
+import { MqttSyncManager } from "./mqttSync.js";
 import { deriveMacAddressFromThingId, findLanIpByMacAddress } from "./networkDiscovery.js";
 import { BlueStarAcPlatformAccessory } from "./platformAccessory.js";
 import { DEFAULT_PLATFORM_NAME, PLATFORM_NAME, PLUGIN_NAME } from "./settings.js";
-import type { AccessoryContext, CloudThing, DeviceConfig, PlatformConfig } from "./types.js";
+import { SyncScheduler } from "./syncScheduler.js";
+import type { AccessoryContext, BrokerInfo, CloudThing, DeviceConfig, PlatformConfig } from "./types.js";
 import { UdpRegistry } from "./udpRegistry.js";
 
 interface LoginPayload {
   session?: string;
+  mi?: string;
 }
 
 interface ThingsPayload {
   things?: CloudThing[];
 }
 
+interface DiscoveryResult {
+  devices: DeviceConfig[];
+  sessionId?: string;
+  brokerInfo?: BrokerInfo;
+}
+
 export class BlueStarAcPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
   public readonly Characteristic: typeof Characteristic;
   public readonly accessories: Map<string, PlatformAccessory<AccessoryContext>> = new Map();
+  public readonly deviceBindings = new Map<string, BlueStarAcPlatformAccessory>();
   public readonly discoveredCacheUUIDs: string[] = [];
   public readonly registry: UdpRegistry;
   public readonly config: PlatformConfig;
 
   private readonly authId: string;
   private readonly password: string;
+  private readonly syncScheduler: SyncScheduler;
+  private mqttSyncManager?: MqttSyncManager;
+  private mqttConnectionKey?: string;
 
   constructor(
     public readonly log: Logger,
@@ -54,6 +68,9 @@ export class BlueStarAcPlatform implements DynamicPlatformPlugin {
     this.registry = new UdpRegistry(log);
     this.authId = this.config.authId?.trim() ?? "";
     this.password = this.config.password ?? "";
+    this.syncScheduler = new SyncScheduler(log, 5_000, (thingId) => {
+      this.requestCloudSync(thingId, "periodic refresh");
+    });
 
     this.log.debug("Finished initializing platform:", this.config.name ?? DEFAULT_PLATFORM_NAME);
 
@@ -61,11 +78,23 @@ export class BlueStarAcPlatform implements DynamicPlatformPlugin {
       this.log.debug("Executed didFinishLaunching callback");
       void this.discoverDevices();
     });
+    this.api.on("shutdown", () => {
+      this.syncScheduler.stop();
+      this.mqttSyncManager?.stop();
+    });
   }
 
   configureAccessory(accessory: PlatformAccessory): void {
     this.log.info("Loading accessory from cache:", accessory.displayName);
     this.accessories.set(accessory.UUID, accessory as PlatformAccessory<AccessoryContext>);
+  }
+
+  registerDeviceBinding(binding: BlueStarAcPlatformAccessory): void {
+    this.deviceBindings.set(binding.thingId, binding);
+  }
+
+  unregisterDeviceBinding(thingId: string): void {
+    this.deviceBindings.delete(thingId);
   }
 
   private mergeCachedDeviceState(device: DeviceConfig, cachedDevice?: DeviceConfig): DeviceConfig {
@@ -112,7 +141,8 @@ export class BlueStarAcPlatform implements DynamicPlatformPlugin {
     this.discoveredCacheUUIDs.length = 0;
 
     try {
-      const devices = await this.resolveDevices();
+      const discovery = await this.resolveDevices();
+      const devices = discovery.devices;
 
       for (const device of devices) {
         const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:${device.thingId}`);
@@ -150,17 +180,58 @@ export class BlueStarAcPlatform implements DynamicPlatformPlugin {
         }
 
         this.log.info("Removing existing accessory from cache:", accessory.displayName);
+        this.unregisterDeviceBinding(accessory.context.device.thingId);
         this.registry.unregister(accessory.context.device.thingId);
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
         this.accessories.delete(uuid);
       }
+
+      this.configureStateSync(discovery);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.log.error(`Device discovery failed: ${message}`);
     }
   }
 
-  private async resolveDevices(): Promise<DeviceConfig[]> {
+  requestCloudSync(thingId: string, reason: string): void {
+    this.mqttSyncManager?.forceSync(thingId, reason);
+  }
+
+  private handleMqttStateReport(thingId: string, packet: Record<string, unknown>): void {
+    this.deviceBindings.get(thingId)?.handleMqttState(packet);
+  }
+
+  private handleMqttPresenceChange(thingId: string, isOnline: boolean, timestamp: number): void {
+    this.deviceBindings.get(thingId)?.handlePresenceChange(isOnline, timestamp);
+  }
+
+  private configureStateSync(discovery: DiscoveryResult): void {
+    if (!discovery.sessionId || !discovery.brokerInfo) {
+      this.syncScheduler.stop();
+      this.mqttSyncManager?.stop();
+      this.mqttSyncManager = undefined;
+      this.mqttConnectionKey = undefined;
+      return;
+    }
+
+    const nextConnectionKey = `${discovery.sessionId}|${discovery.brokerInfo.endpoint}|${discovery.brokerInfo.accessKeyId}`;
+    if (!this.mqttSyncManager || this.mqttConnectionKey !== nextConnectionKey) {
+      this.mqttSyncManager?.stop();
+      this.mqttSyncManager = new MqttSyncManager(this.log, discovery.brokerInfo, discovery.sessionId);
+      this.mqttConnectionKey = nextConnectionKey;
+    }
+
+    this.mqttSyncManager.syncDevices(discovery.devices.map((device) => ({
+      thingId: device.thingId,
+      callbacks: {
+        onStateReport: (packet) => this.handleMqttStateReport(device.thingId, packet),
+        onPresenceChange: (isOnline, timestamp) => this.handleMqttPresenceChange(device.thingId, isOnline, timestamp),
+      },
+    })));
+    this.syncScheduler.syncThingIds(discovery.devices.map((device) => device.thingId));
+  }
+
+  private async resolveDevices(): Promise<DiscoveryResult> {
     const overrides = this.config.devices ?? [];
     if (this.authId && this.password) {
       return this.resolveCloudDevices(overrides);
@@ -170,10 +241,12 @@ export class BlueStarAcPlatform implements DynamicPlatformPlugin {
       throw new Error("Configure cloud login or provide manual devices with thingId and uat");
     }
 
-    return overrides.map((override) => buildManualDeviceConfig(override));
+    return {
+      devices: overrides.map((override) => buildManualDeviceConfig(override)),
+    };
   }
 
-  private async resolveCloudDevices(overrides: PlatformConfig["devices"] = []): Promise<DeviceConfig[]> {
+  private async resolveCloudDevices(overrides: PlatformConfig["devices"] = []): Promise<DiscoveryResult> {
     const loginPayload = await requestJson<LoginPayload>(CLOUD_LOGIN_URL, {
       method: "POST",
       headers: buildCloudHeaders(),
@@ -186,6 +259,11 @@ export class BlueStarAcPlatform implements DynamicPlatformPlugin {
 
     if (!loginPayload.session) {
       throw new Error("Login response did not include session");
+    }
+
+    const brokerInfo = parseBrokerInfo(loginPayload.mi);
+    if (!brokerInfo) {
+      this.log.warn("Login response did not include broker info; MQTT state sync is disabled");
     }
 
     const thingsPayload = await requestJson<ThingsPayload>(CLOUD_THINGS_URL, {
@@ -212,9 +290,13 @@ export class BlueStarAcPlatform implements DynamicPlatformPlugin {
       throw new Error("No Blue Star ACs are selected. Open the plugin settings and choose at least one device.");
     }
 
-    return selectedThings.map((thing) => {
-      const override = findOverrideForThing(thing, overrides);
-      return mergeCloudThingWithOverride(thing, override);
-    });
+    return {
+      devices: selectedThings.map((thing) => {
+        const override = findOverrideForThing(thing, overrides);
+        return mergeCloudThingWithOverride(thing, override);
+      }),
+      sessionId: loginPayload.session,
+      brokerInfo,
+    };
   }
 }

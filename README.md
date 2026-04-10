@@ -26,6 +26,13 @@ Verified against a live Blue Star AC over local UDP:
 - Fan speed
 - Swing on/off
 - Temperature unit switching
+
+State sync:
+
+- subscribes to Blue Star MQTT reported-state and presence topics when cloud login is configured
+- requests a refresh from the AC every 5 seconds via MQTT force-sync so Homebridge can recover if a push update is missed
+- still listens for local UDP broadcasts and prefers those whenever the AC talks on the LAN
+
 Not exposed because they are either unverified, risky, or a poor HomeKit fit:
 
 - Fan mode
@@ -96,3 +103,4 @@ If you do not want cloud discovery, provide devices manually:
 - `uat` is a device token, not your account password.
 - If `ip` is omitted, the plugin can learn it from a UDP state packet, but commands will not work until the AC talks first on the LAN.
 - Blue Star mode changes use a nested payload over local UDP. This plugin sends the app-style payload shape for mode switching.
+- The periodic refresh loop uses Blue Star's MQTT `fpsh` control message. I have not found a documented local UDP "query state now" command in the decrypted app.

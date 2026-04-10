@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { PLUGIN_NAME } from "./settings.js";
-import { CloudThing, DeviceConfig, DeviceState, PlatformDeviceOverride, SupportedModeName } from "./types.js";
+import { BrokerInfo, CloudThing, DeviceConfig, DeviceState, PlatformDeviceOverride, SupportedModeName } from "./types.js";
 
 export const UDP_PORT = 44542;
 export const SOURCE_VALUE = "anlan";
@@ -368,6 +368,51 @@ function normalizeName(value: string): string {
 export function normalizeOptionalString(value?: string): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function decodeBase64Utf8(value: string): string {
+  return Buffer.from(value, "base64").toString("utf8").trim();
+}
+
+export function parseBrokerInfo(rawValue?: string): BrokerInfo | undefined {
+  const normalized = normalizeOptionalString(rawValue);
+  if (!normalized) {
+    return undefined;
+  }
+
+  let decoded = normalized;
+  try {
+    const base64Decoded = decodeBase64Utf8(normalized);
+    if (base64Decoded.includes("::")) {
+      decoded = base64Decoded;
+    }
+  } catch {
+    decoded = normalized;
+  }
+
+  const parts = decoded.split("::").map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 3) {
+    throw new Error("Broker info is malformed");
+  }
+
+  const endpoint = parts[0];
+  const accessKeyId = parts[1];
+  const secretAccessKey = parts[2];
+  const sessionToken = normalizeOptionalString(parts[3]);
+  const regionMatch = endpoint.match(/\.iot\.([a-z0-9-]+)\.amazonaws\.com$/i);
+  const region = regionMatch?.[1] ?? "ap-south-1";
+
+  if (!endpoint || !accessKeyId || !secretAccessKey) {
+    throw new Error("Broker info is incomplete");
+  }
+
+  return {
+    endpoint,
+    accessKeyId,
+    secretAccessKey,
+    sessionToken,
+    region,
+  };
 }
 
 export function mergeCloudThingWithOverride(thing: CloudThing, override?: PlatformDeviceOverride): DeviceConfig {
