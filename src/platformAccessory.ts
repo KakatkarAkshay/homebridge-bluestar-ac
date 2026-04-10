@@ -87,12 +87,24 @@ export class BlueStarAcPlatformAccessory implements UdpAccessoryBinding {
     return this.device.ip;
   }
 
+  private persistDevice(device: DeviceConfig): void {
+    this.device = device;
+    this.accessory.context.device = device;
+    this.platform.api.updatePlatformAccessories([this.accessory]);
+  }
+
+  private learnIpAddress(ipAddress: string, source: string): void {
+    if (this.device.ip === ipAddress) {
+      return;
+    }
+
+    this.persistDevice({ ...this.device, ip: ipAddress });
+    this.log.info(`${this.device.name}: learned device IP from ${source}: ${ipAddress}`);
+  }
+
   handleLocalState(packet: Record<string, unknown>, sourceIp?: string): void {
     if (!this.device.ip && sourceIp) {
-      this.device = { ...this.device, ip: sourceIp };
-      this.accessory.context.device = this.device;
-      this.platform.api.updatePlatformAccessories([this.accessory]);
-      this.log.info(`${this.device.name}: learned device IP from UDP broadcast: ${sourceIp}`);
+      this.learnIpAddress(sourceIp, "UDP broadcast");
     }
 
     this.state = {
@@ -213,7 +225,22 @@ export class BlueStarAcPlatformAccessory implements UdpAccessoryBinding {
     this.heaterCoolerService.updateCharacteristic(this.hapCharacteristic.TemperatureDisplayUnits, temperatureUnit);
   }
 
-  private sendDesiredState(delta: Record<string, unknown>): void {
+  private async ensureIpAddress(): Promise<string> {
+    if (this.device.ip) {
+      return this.device.ip;
+    }
+
+    const discoveredIp = await this.platform.resolveDeviceIp(this.device);
+    if (discoveredIp) {
+      this.learnIpAddress(discoveredIp, "LAN neighbour table");
+      return discoveredIp;
+    }
+
+    throw new Error("Device IP is unknown; configure it or wait for a UDP state packet");
+  }
+
+  private async sendDesiredState(delta: Record<string, unknown>): Promise<void> {
+    await this.ensureIpAddress();
     if (!this.device.ip) {
       throw new Error("Device IP is unknown; configure it or wait for a UDP state packet");
     }

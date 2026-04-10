@@ -18,6 +18,7 @@ import {
   normalizeOptionalString,
   requestJson,
 } from "./bluestar.js";
+import { deriveMacAddressFromThingId, findLanIpByMacAddress } from "./networkDiscovery.js";
 import { BlueStarAcPlatformAccessory } from "./platformAccessory.js";
 import { DEFAULT_PLATFORM_NAME, PLATFORM_NAME, PLUGIN_NAME } from "./settings.js";
 import type { AccessoryContext, CloudThing, DeviceConfig, PlatformConfig } from "./types.js";
@@ -86,6 +87,27 @@ export class BlueStarAcPlatform implements DynamicPlatformPlugin {
     };
   }
 
+  async resolveDeviceIp(device: DeviceConfig): Promise<string | undefined> {
+    const currentIp = normalizeOptionalString(device.ip);
+    if (currentIp) {
+      return currentIp;
+    }
+
+    const macAddress = deriveMacAddressFromThingId(device.thingId);
+    if (!macAddress) {
+      return undefined;
+    }
+
+    const discoveredIp = normalizeOptionalString(await findLanIpByMacAddress(macAddress));
+    if (discoveredIp) {
+      this.log.info(`${device.name}: resolved device IP ${discoveredIp} from LAN neighbour table (${macAddress})`);
+    } else {
+      this.log.debug(`${device.name}: no LAN neighbour entry found for ${macAddress}`);
+    }
+
+    return discoveredIp;
+  }
+
   async discoverDevices(): Promise<void> {
     this.discoveredCacheUUIDs.length = 0;
 
@@ -98,7 +120,11 @@ export class BlueStarAcPlatform implements DynamicPlatformPlugin {
         const existingAccessory = this.accessories.get(uuid);
 
         if (existingAccessory) {
-          const resolvedDevice = this.mergeCachedDeviceState(device, existingAccessory.context.device);
+          const mergedDevice = this.mergeCachedDeviceState(device, existingAccessory.context.device);
+          const resolvedDevice = {
+            ...mergedDevice,
+            ip: await this.resolveDeviceIp(mergedDevice) ?? mergedDevice.ip,
+          };
           this.log.info("Restoring existing accessory from cache:", existingAccessory.displayName);
           existingAccessory.context.device = resolvedDevice;
           this.api.updatePlatformAccessories([existingAccessory]);
@@ -106,10 +132,14 @@ export class BlueStarAcPlatform implements DynamicPlatformPlugin {
           continue;
         }
 
+        const resolvedDevice = {
+          ...device,
+          ip: await this.resolveDeviceIp(device) ?? device.ip,
+        };
         this.log.info("Adding new accessory:", device.name);
-        const accessory = new this.api.platformAccessory<AccessoryContext>(device.name, uuid);
-        accessory.context.device = device;
-        new BlueStarAcPlatformAccessory(this, accessory, device);
+        const accessory = new this.api.platformAccessory<AccessoryContext>(resolvedDevice.name, uuid);
+        accessory.context.device = resolvedDevice;
+        new BlueStarAcPlatformAccessory(this, accessory, resolvedDevice);
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
         this.accessories.set(uuid, accessory);
       }
