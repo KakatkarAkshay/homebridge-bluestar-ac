@@ -2,7 +2,7 @@
   "name": "homebridge-bluestar-ac",
   "displayName": "Blue Star AC",
   "type": "module",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Homebridge dynamic platform plugin for Blue Star AC local UDP control",
   "author": "Akshay Kakatkar",
   "homepage": "https://github.com/KakatkarAkshay/homebridge-bluestar-ac#readme",
