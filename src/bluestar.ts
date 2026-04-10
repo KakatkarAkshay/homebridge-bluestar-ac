@@ -43,6 +43,10 @@ export function roundToHalf(value: number): number {
   return Math.round(value * 2) / 2;
 }
 
+export function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
 export function celsiusToFahrenheit(value: number): number {
   return (value * 9) / 5 + 32;
 }
@@ -53,11 +57,19 @@ export function fahrenheitToCelsius(value: number): number {
 
 export function toHomeKitTemperature(deviceValue: unknown, temperatureUnit: number): number {
   const numericValue = parseFloatSafe(deviceValue, 24);
-  if (temperatureUnit === 1) {
+
+  // Blue Star packets occasionally report Celsius values while the unit flag
+  // still says Fahrenheit. Treat obviously-Celsius values as Celsius, and only
+  // convert when the reported value looks like a real Fahrenheit reading.
+  if (temperatureUnit === 1 && numericValue >= 32) {
     return roundToHalf(fahrenheitToCelsius(numericValue));
   }
 
   return roundToHalf(numericValue);
+}
+
+export function toHomeKitThresholdTemperature(deviceValue: unknown, temperatureUnit: number): number {
+  return clampNumber(toHomeKitTemperature(deviceValue, temperatureUnit), 16, 30);
 }
 
 export function toDeviceTemperatureString(homeKitValue: number, temperatureUnit: number): string {

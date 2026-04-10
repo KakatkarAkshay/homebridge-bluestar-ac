@@ -21,6 +21,7 @@ import {
   SWING_OFF_VALUE,
   SWING_ON_VALUE,
   toDeviceTemperatureString,
+  toHomeKitThresholdTemperature,
   toHomeKitTemperature,
 } from "./bluestar.js";
 import type { BlueStarAcPlatform } from "./platform.js";
@@ -208,7 +209,7 @@ export class BlueStarAcPlatformAccessory implements UdpAccessoryBinding {
   }
 
   private getCurrentTargetTemperature(): number {
-    return toHomeKitTemperature(this.state.stemp, this.getCurrentTemperatureUnit());
+    return toHomeKitThresholdTemperature(this.state.stemp, this.getCurrentTemperatureUnit());
   }
 
   private getValidTargetHeaterCoolerStates(): number[] {
