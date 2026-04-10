@@ -1,0 +1,609 @@
+<style>
+  :root {
+    --bs-picker-body-bg: var(--bs-body-bg, #ffffff);
+    --bs-picker-surface-bg: var(--bs-body-bg, #ffffff);
+    --bs-picker-muted-bg: var(--bs-tertiary-bg, #f8f9fa);
+    --bs-picker-border: var(--bs-border-color, #dee2e6);
+    --bs-picker-text: var(--bs-body-color, #212529);
+    --bs-picker-muted-text: var(--bs-secondary-color, #6c757d);
+    --bs-picker-success: var(--bs-success, #198754);
+    --bs-picker-danger: var(--bs-danger, #dc3545);
+  }
+
+  html, body {
+    background: var(--bs-picker-body-bg) !important;
+    color: var(--bs-picker-text);
+  }
+
+  body {
+    margin: 0;
+  }
+
+  .bs-picker {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 4px 10px 0;
+    color: var(--bs-picker-text);
+  }
+
+  .bs-picker .bs-panel {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .bs-picker .bs-panel-body {
+    padding: 0;
+  }
+
+  .bs-picker .bs-section + .bs-section {
+    margin-top: 20px;
+  }
+
+  .bs-picker .bs-selection-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .bs-picker .bs-selection-actions[hidden] {
+    display: none !important;
+  }
+
+  .bs-picker .bs-device-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .bs-picker .bs-empty {
+    border: 1px dashed var(--bs-picker-border);
+    border-radius: var(--bs-border-radius);
+    padding: 18px;
+    color: var(--bs-picker-muted-text);
+    font-size: 14px;
+    background: transparent;
+  }
+
+  .bs-picker .bs-device {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    padding: 16px;
+    border: 1px solid var(--bs-picker-border);
+    border-radius: var(--bs-border-radius);
+    background: transparent;
+  }
+
+  .bs-picker .bs-device.disabled {
+    background: var(--bs-picker-muted-bg);
+  }
+
+  .bs-picker .bs-device input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 6px 0 0;
+    justify-self: center;
+  }
+
+  .bs-picker .bs-device-copy {
+    min-width: 0;
+  }
+
+  .bs-picker .bs-device-title {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.35;
+    font-weight: 600;
+    color: var(--bs-picker-text);
+  }
+
+  .bs-picker .bs-device-meta {
+    margin: 4px 0 0;
+    color: var(--bs-picker-muted-text);
+    font-size: 12px;
+    opacity: 0.72;
+    word-break: break-all;
+  }
+
+  .bs-picker .bs-status {
+    margin-top: 10px;
+    font-size: 13px;
+  }
+
+  .bs-picker .bs-status[hidden] {
+    display: none !important;
+  }
+
+  .bs-picker .bs-status-muted {
+    color: var(--bs-picker-muted-text);
+    opacity: 0.72;
+  }
+
+  .bs-picker .bs-status-success {
+    color: var(--bs-picker-success);
+  }
+
+  .bs-picker .bs-status-danger {
+    color: var(--bs-picker-danger);
+  }
+
+  .bs-picker .bs-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    margin-bottom: 4px;
+  }
+
+  .bs-picker .bs-actions .btn {
+    min-width: 150px;
+  }
+
+  .bs-picker .btn {
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .bs-picker .form-control {
+    color: var(--bs-picker-text);
+    background: transparent;
+    border-color: var(--bs-picker-border);
+  }
+
+  .bs-picker .form-control::placeholder {
+    color: var(--bs-picker-muted-text);
+    opacity: 0.72;
+  }
+
+  .bs-picker .btn-outline-secondary {
+    color: var(--bs-picker-text);
+    border-color: var(--bs-picker-border);
+    background: transparent;
+  }
+
+  .bs-picker .btn-outline-secondary:hover,
+  .bs-picker .btn-outline-secondary:focus {
+    color: var(--bs-picker-text);
+    border-color: var(--bs-picker-border);
+    background: transparent;
+  }
+
+  .bs-picker .form-check-input {
+    background-color: transparent;
+    border-color: var(--bs-picker-border);
+  }
+
+  .bs-picker .form-label,
+  .bs-picker .fw-semibold {
+    color: var(--bs-picker-text);
+  }
+
+  @media (max-width: 767.98px) {
+    .bs-picker .bs-panel-body {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .bs-picker .bs-actions .btn {
+      width: 100%;
+    }
+  }
+</style>
+
+<div class="bs-picker">
+  <div class="bs-panel">
+    <div class="bs-panel-body">
+      <div class="bs-section">
+        <div>
+          <label class="form-label" for="auth-id">Login ID</label>
+          <input id="auth-id" class="form-control" autocomplete="username" placeholder="Email or 10-digit phone number">
+        </div>
+        <div class="mt-3">
+          <label class="form-label" for="password">Password</label>
+          <input id="password" type="password" class="form-control" autocomplete="current-password" placeholder="Blue Star password">
+        </div>
+        <div class="bs-actions">
+          <button id="discover" class="btn btn-outline-secondary">Discover Devices</button>
+        </div>
+        <div id="account-status" class="bs-status bs-status-muted" hidden></div>
+      </div>
+
+      <div class="bs-section">
+        <div class="fw-semibold">Devices</div>
+
+        <div id="selection-actions" class="bs-selection-actions mt-3" hidden>
+          <button id="select-all" type="button" class="btn btn-outline-secondary btn-sm">Select all</button>
+          <button id="select-none" type="button" class="btn btn-outline-secondary btn-sm">Clear selection</button>
+        </div>
+
+        <div id="device-list" class="bs-device-list mt-3">
+          <div class="bs-empty">Discover devices to populate the picker.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const pluginPlatform = "BlueStarAcPlatform";
+  const defaultPlatformName = "Blue Star AC";
+  const state = {
+    config: null,
+    discoveredDevices: [],
+    isReady: false,
+    draftTimer: null,
+    themeObserver: null,
+  };
+
+  const elements = {
+    authId: document.getElementById("auth-id"),
+    password: document.getElementById("password"),
+    discover: document.getElementById("discover"),
+    selectAll: document.getElementById("select-all"),
+    selectNone: document.getElementById("select-none"),
+    selectionActions: document.getElementById("selection-actions"),
+    deviceList: document.getElementById("device-list"),
+    accountStatus: document.getElementById("account-status"),
+  };
+
+  function defaultConfigBlock() {
+    return {
+      platform: pluginPlatform,
+      name: defaultPlatformName,
+      selectedThingIds: [],
+      devices: [],
+    };
+  }
+
+  function normalizePlatformConfig(pluginConfig) {
+    const block = pluginConfig.find((entry) => entry.platform === pluginPlatform);
+    return block ? { ...defaultConfigBlock(), ...block } : defaultConfigBlock();
+  }
+
+  async function applyTheme() {
+    const lightingMode = await homebridge.userCurrentLightingMode();
+    const parentRoot = window.parent?.document?.documentElement;
+    const parentBody = window.parent?.document?.body;
+    const frameElement = window.frameElement;
+    const parentModalContent = frameElement?.closest?.(".modal-content");
+    const parentModalBody = frameElement?.closest?.(".modal-body");
+
+    document.documentElement.setAttribute("data-bs-theme", lightingMode);
+    document.body.setAttribute("data-bs-theme", lightingMode);
+
+    if (parentRoot && parentBody) {
+      const parentRootStyle = window.parent.getComputedStyle(parentRoot);
+      const parentBodyStyle = window.parent.getComputedStyle(parentBody);
+      const parentModalContentStyle = parentModalContent ? window.parent.getComputedStyle(parentModalContent) : null;
+      const parentModalBodyStyle = parentModalBody ? window.parent.getComputedStyle(parentModalBody) : null;
+      const targetStyle = document.documentElement.style;
+      const resolveColor = (value, fallback = "") => {
+        const normalized = (value || "").trim();
+        if (!normalized || normalized === "transparent" || normalized === "rgba(0, 0, 0, 0)") {
+          return fallback;
+        }
+        return normalized;
+      };
+      const colorWithAlpha = (value, alpha) => {
+        const normalized = resolveColor(value);
+        const rgbMatch = normalized.match(/^rgba?\(([^)]+)\)$/);
+        if (rgbMatch) {
+          const [red, green, blue] = rgbMatch[1].split(",").map((part) => Number.parseFloat(part.trim()));
+          return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+        }
+
+        if (normalized.startsWith("#")) {
+          const hex = normalized.slice(1);
+          const expand = hex.length === 3 ? hex.split("").map((part) => part + part).join("") : hex;
+          if (expand.length === 6) {
+            const red = Number.parseInt(expand.slice(0, 2), 16);
+            const green = Number.parseInt(expand.slice(2, 4), 16);
+            const blue = Number.parseInt(expand.slice(4, 6), 16);
+            return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+          }
+        }
+
+        return normalized;
+      };
+      const bootstrapVars = [
+        "--bs-body-bg",
+        "--bs-body-color",
+        "--bs-border-color",
+        "--bs-secondary-color",
+        "--bs-tertiary-bg",
+        "--bs-emphasis-color",
+        "--bs-success",
+        "--bs-danger",
+        "--bs-primary",
+        "--bs-primary-rgb",
+        "--bs-border-radius",
+      ];
+
+      for (const variableName of bootstrapVars) {
+        const value = parentRootStyle.getPropertyValue(variableName).trim()
+          || parentBodyStyle.getPropertyValue(variableName).trim();
+        if (value) {
+          targetStyle.setProperty(variableName, value);
+        }
+      }
+
+      const modalBackground = resolveColor(
+        parentModalContentStyle?.backgroundColor,
+        resolveColor(parentBodyStyle.backgroundColor, "#ffffff"),
+      );
+      const modalBodyBackground = resolveColor(parentModalBodyStyle?.backgroundColor, modalBackground);
+      const modalText = resolveColor(
+        parentModalBodyStyle?.color,
+        resolveColor(
+          parentRootStyle.getPropertyValue("--bs-emphasis-color").trim(),
+          resolveColor(parentModalContentStyle?.color, resolveColor(parentBodyStyle.color, "#212529")),
+        ),
+      );
+      const modalBorder = colorWithAlpha(modalText, 0.18);
+      const mutedText = modalText;
+      const tertiaryBackground = parentRootStyle.getPropertyValue("--bs-tertiary-bg").trim()
+        || parentBodyStyle.getPropertyValue("--bs-tertiary-bg").trim()
+        || modalBodyBackground;
+
+      targetStyle.setProperty("--bs-picker-body-bg", modalBodyBackground);
+      targetStyle.setProperty("--bs-picker-surface-bg", modalBodyBackground);
+      targetStyle.setProperty("--bs-picker-muted-bg", tertiaryBackground);
+      targetStyle.setProperty("--bs-picker-border", modalBorder);
+      targetStyle.setProperty("--bs-picker-text", modalText);
+      targetStyle.setProperty("--bs-picker-muted-text", mutedText);
+    }
+
+    homebridge.fixScrollHeight();
+  }
+
+  function setStatus(message, tone = "muted") {
+    elements.accountStatus.className = `bs-status bs-status-${tone}`;
+    elements.accountStatus.textContent = message;
+    elements.accountStatus.hidden = !message;
+    homebridge.fixScrollHeight();
+  }
+
+  function selectedThingIdsFromUi() {
+    return [...document.querySelectorAll("[data-thing-id]:checked")].map((input) => input.getAttribute("data-thing-id"));
+  }
+
+  function selectedThingIdsFromConfig() {
+    return new Set((state.config.selectedThingIds || []).filter(Boolean));
+  }
+
+  function overrideMap(config) {
+    return new Map((config.devices || []).map((device) => [device.thingId, device]));
+  }
+
+  function updateSelectionSummary() {
+    homebridge.fixScrollHeight();
+  }
+
+  function updateSelectionActions() {
+    elements.selectionActions.hidden = state.discoveredDevices.length === 0;
+  }
+
+  function renderEmptyState(message) {
+    elements.deviceList.innerHTML = "";
+    const empty = document.createElement("div");
+    empty.className = "bs-empty";
+    empty.textContent = message;
+    elements.deviceList.appendChild(empty);
+    updateSelectionActions();
+    updateSelectionSummary();
+  }
+
+  function renderDeviceList() {
+    elements.deviceList.innerHTML = "";
+
+    if (!state.discoveredDevices.length) {
+      renderEmptyState("Discover devices to populate the picker.");
+      return;
+    }
+
+    const selected = selectedThingIdsFromConfig();
+
+    for (const device of state.discoveredDevices) {
+      const item = document.createElement("label");
+      item.className = "bs-device";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "form-check-input";
+      checkbox.setAttribute("data-thing-id", device.thingId);
+      checkbox.checked = selected.has(device.thingId);
+      checkbox.addEventListener("change", () => {
+        updateSelectionSummary();
+        scheduleDraftConfigUpdate();
+      });
+
+      const text = document.createElement("div");
+      text.className = "bs-device-copy";
+
+      const title = document.createElement("div");
+      title.className = "bs-device-title";
+      title.textContent = device.name || device.thingId;
+
+      const subtitle = document.createElement("div");
+      subtitle.className = "bs-device-meta";
+      subtitle.textContent = device.thingId;
+
+      text.appendChild(title);
+      text.appendChild(subtitle);
+      item.appendChild(checkbox);
+      item.appendChild(text);
+      elements.deviceList.appendChild(item);
+    }
+
+    updateSelectionActions();
+    updateSelectionSummary();
+    homebridge.fixScrollHeight();
+  }
+
+  function populateForm(config) {
+    state.config = config;
+    elements.authId.value = config.authId || "";
+    elements.password.value = config.password || "";
+    renderDeviceList();
+  }
+
+  async function loadConfig() {
+    const pluginConfig = await homebridge.getPluginConfig();
+    populateForm(normalizePlatformConfig(pluginConfig));
+    if (state.config.authId && state.config.password) {
+      await discoverDevices(false);
+    }
+    state.isReady = true;
+  }
+
+  function buildNextConfig(sourceConfig = state.config || defaultConfigBlock()) {
+    const config = normalizePlatformConfig([sourceConfig]);
+    const authId = elements.authId.value.trim();
+    const password = elements.password.value;
+
+    const nextConfig = {
+      ...config,
+      platform: pluginPlatform,
+      name: config.name || defaultPlatformName,
+      selectedThingIds: selectedThingIdsFromUi(),
+      devices: buildMergedDevices(config),
+    };
+
+    if (authId) {
+      nextConfig.authId = authId;
+    } else {
+      delete nextConfig.authId;
+    }
+
+    if (password) {
+      nextConfig.password = password;
+    } else {
+      delete nextConfig.password;
+    }
+
+    return nextConfig;
+  }
+
+  async function applyDraftConfig(markDirty = true) {
+    if (!state.isReady) {
+      return;
+    }
+
+    const latestConfig = await homebridge.getPluginConfig();
+    const baseConfig = normalizePlatformConfig(latestConfig);
+    const nextConfig = buildNextConfig(baseConfig);
+    await homebridge.updatePluginConfig([nextConfig]);
+    state.config = nextConfig;
+
+    if (markDirty) {
+      homebridge.enableSaveButton();
+      setStatus("", "muted");
+    }
+  }
+
+  function scheduleDraftConfigUpdate() {
+    if (!state.isReady) {
+      return;
+    }
+
+    if (state.draftTimer) {
+      clearTimeout(state.draftTimer);
+    }
+
+    state.draftTimer = setTimeout(() => {
+      state.draftTimer = null;
+      void applyDraftConfig(true);
+    }, 150);
+  }
+
+  async function discoverDevices(markDirty = true) {
+    elements.discover.disabled = true;
+    setStatus("Discovering devices from Blue Star account...");
+
+    try {
+      const response = await homebridge.request("/discover", {
+        authId: elements.authId.value.trim(),
+        password: elements.password.value,
+      });
+
+      state.discoveredDevices = response.devices || [];
+      if (state.discoveredDevices.length === 0) {
+        renderEmptyState("No devices were returned for this account.");
+      } else {
+        renderDeviceList();
+      }
+      if (markDirty) {
+        await applyDraftConfig(true);
+      }
+      homebridge.toast.success(`Found ${state.discoveredDevices.length} Blue Star device${state.discoveredDevices.length === 1 ? "" : "s"}.`);
+      setStatus("", "muted");
+    } catch (error) {
+      setStatus(error.message || "Device discovery failed.", "danger");
+      homebridge.toast.error(error.message || "Device discovery failed.");
+    } finally {
+      elements.discover.disabled = false;
+    }
+  }
+
+  function buildMergedDevices(existingConfig) {
+    if (!state.discoveredDevices.length) {
+      return existingConfig.devices || [];
+    }
+
+    const overrides = overrideMap(existingConfig);
+    const wantedIds = selectedThingIdsFromUi();
+
+    return wantedIds.map((thingId) => {
+      const discovered = state.discoveredDevices.find((device) => device.thingId === thingId) || {};
+      const existing = overrides.get(thingId) || {};
+      return {
+        thingId,
+        deviceName: existing.deviceName || discovered.name || "",
+        name: existing.name || discovered.name || "",
+        ip: existing.ip || "",
+        supportedModes: existing.supportedModes,
+        sendMode: existing.sendMode,
+      };
+    });
+  }
+
+  homebridge.addEventListener("ready", async () => {
+    homebridge.disableSaveButton();
+    await applyTheme();
+    const parentRoot = window.parent?.document?.documentElement;
+    if (parentRoot && window.MutationObserver) {
+      state.themeObserver = new MutationObserver(() => {
+        void applyTheme();
+      });
+      state.themeObserver.observe(parentRoot, {
+        attributes: true,
+        attributeFilter: ["data-bs-theme", "style", "class"],
+      });
+    }
+    await loadConfig();
+  });
+
+  elements.discover.addEventListener("click", () => {
+    void discoverDevices(true);
+  });
+  elements.authId.addEventListener("input", scheduleDraftConfigUpdate);
+  elements.password.addEventListener("input", scheduleDraftConfigUpdate);
+  elements.selectAll.addEventListener("click", () => {
+    document.querySelectorAll("[data-thing-id]").forEach((input) => {
+      input.checked = true;
+    });
+    updateSelectionSummary();
+    scheduleDraftConfigUpdate();
+  });
+  elements.selectNone.addEventListener("click", () => {
+    document.querySelectorAll("[data-thing-id]").forEach((input) => {
+      input.checked = false;
+    });
+    updateSelectionSummary();
+    scheduleDraftConfigUpdate();
+  });
+})();
+</script>

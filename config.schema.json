@@ -2,15 +2,84 @@
   "pluginAlias": "BlueStarAcPlatform",
   "pluginType": "platform",
   "singular": true,
+  "strictValidation": false,
+  "customUi": true,
   "schema": {
     "type": "object",
-    "additionalProperties": false,
     "required": ["name"],
+    "additionalProperties": false,
     "properties": {
       "name": {
         "title": "Name",
         "type": "string",
         "default": "Blue Star AC"
+      },
+      "authId": {
+        "title": "Blue Star Login",
+        "type": "string"
+      },
+      "password": {
+        "title": "Blue Star Password",
+        "type": "string"
+      },
+      "selectedThingIds": {
+        "title": "Selected Thing IDs",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "devices": {
+        "title": "Device Overrides",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "thingId": {
+              "title": "Thing ID",
+              "type": "string"
+            },
+            "deviceName": {
+              "title": "Cloud Device Name",
+              "type": "string"
+            },
+            "name": {
+              "title": "HomeKit Name",
+              "type": "string"
+            },
+            "ip": {
+              "title": "LAN IP",
+              "type": "string"
+            },
+            "uat": {
+              "title": "Device UAT",
+              "type": "string"
+            },
+            "supportedModes": {
+              "title": "Supported Modes",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["cool", "heat", "auto"]
+              }
+            },
+            "sendMode": {
+              "title": "UDP Framing",
+              "type": "string",
+              "default": "app",
+              "oneOf": [
+                {
+                  "title": "Android App Style",
+                  "enum": ["app"]
+                },
+                {
+                  "title": "Standard IV + Ciphertext",
+                  "enum": ["standard"]
+                }
+              ]
+            }
+          }
+        }
       }
     }
   }
